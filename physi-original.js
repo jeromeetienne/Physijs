@@ -22,9 +22,6 @@ window.Physijs = (function() {
 	
 	Physijs.scripts = {};
 	
-	//////////////////////////////////////////////////////////////////////////
-	//									//
-	//////////////////////////////////////////////////////////////////////////
 	Eventable = function() {
 		this._eventListeners = {};
 	};
@@ -62,9 +59,6 @@ window.Physijs = (function() {
 		obj.prototype.dispatchEvent = Eventable.prototype.dispatchEvent;
 	};
 	
-	//////////////////////////////////////////////////////////////////////////
-	//									//
-	//////////////////////////////////////////////////////////////////////////
 	getObjectId = (function() {
 		var _id = 0;
 		return function() {
@@ -99,27 +93,15 @@ window.Physijs = (function() {
 			z: c1 * s2 * c3 - s1 * c2 * s3
 		};
 	};
-
+	
+	
+	
 	// Physijs.noConflict
 	Physijs.noConflict = function() {
 		window.Physijs = _Physijs;
 		return Physijs;
 	};
-
-	//////////////////////////////////////////////////////////////////////////
-	//		Physijs.createMaterial					//
-	//////////////////////////////////////////////////////////////////////////
 	
-	Physijs.addxMaterialCtx	= function(material, friction, restitution){
-		console.assert(material instanceof THREE.Material)
-		console.assert(material.id)
-		console.assert(material._physijs === undefined)
-		material._physijs	= {
-			id		: material.id,
-			friction	: friction === undefined ? .8 : friction,
-			restitution	: restitution === undefined ? .2 : restitution
-		};
-	}	
 	
 	// Physijs.createMaterial
 	Physijs.createMaterial = function( material, friction, restitution ) {
@@ -127,15 +109,15 @@ window.Physijs = (function() {
 		physijs_material.prototype = material;
 		physijs_material = new physijs_material;
 		
-		Physijs.addxMaterialCtx(physijs_material, friction, restitution)
+		physijs_material._physijs = {
+			id: material.id,
+			friction: friction === undefined ? .8 : friction,
+			restitution: restitution === undefined ? .2 : restitution
+		};
 		
 		return physijs_material;
 	};
-		
-
-	//////////////////////////////////////////////////////////////////////////
-	//		Physijs.Scene						//
-	//////////////////////////////////////////////////////////////////////////
+	
 	
 	// Physijs.Scene
 	Physijs.Scene = function( params ) {
@@ -454,11 +436,6 @@ window.Physijs = (function() {
 		return true;
 	};
 	
-	
-
-	//////////////////////////////////////////////////////////////////////////
-	//		Phsijs.Mesh						//
-	//////////////////////////////////////////////////////////////////////////
 	
 	// Phsijs.Mesh
 	Physijs.Mesh = function ( geometry, material, mass ) {

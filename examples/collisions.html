@@ -24,8 +24,8 @@
 	initScene = function() {
 		renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setSize( window.innerWidth, window.innerHeight );
-		renderer.shadowMapEnabled = true;
-		renderer.shadowMapSoft = true;
+		//renderer.shadowMapEnabled = true;
+		//renderer.shadowMapSoft = true;
 		document.getElementById( 'viewport' ).appendChild( renderer.domElement );
 		
 		stats = new Stats();
@@ -114,11 +114,13 @@
 						break;
 				}
 			},
+			boxMaterial	= new THREE.MeshLambertMaterial({ map: THREE.ImageUtils.loadTexture( 'images/plywood.jpg' ) }),
 			createBox = function() {
 				var box, material;
 				
 				material = Physijs.createMaterial(
-					new THREE.MeshLambertMaterial({ map: THREE.ImageUtils.loadTexture( 'images/plywood.jpg' ) }),
+					//new THREE.MeshLambertMaterial({ map: THREE.ImageUtils.loadTexture( 'images/plywood.jpg' ) }),
+					boxMaterial,
 					.4, // low friction
 					.6 // high restitution
 				);
@@ -138,7 +140,7 @@
 					25,
 					Math.random() * 15 - 7.5
 				);
-				
+				//box.position.z = 99999;
 				box.rotation.set(
 					Math.random() * Math.PI,
 					Math.random() * Math.PI,
@@ -146,17 +148,18 @@
 				);
 				
 				box.castShadow = true;
-				box.addEventListener( 'collision', handleCollision );
+				//box.addEventListener( 'collision', handleCollision );
 				scene.add( box, spawnBox );
 			};
 		
 		return function() {
-			setTimeout( createBox, 1000 );
+			setTimeout( createBox, 4*1000 );
 		};
 	})();
 	
 	render = function() {
-		scene.simulate(undefined, 2);
+		scene.simulate(2*1/60, 2);
+		//scene.simulate(undefined, 2);
 		renderer.render( scene, camera);
 		stats.update();
 		requestAnimationFrame( render );

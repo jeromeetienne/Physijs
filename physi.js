@@ -109,25 +109,24 @@ window.Physijs = (function() {
 	//////////////////////////////////////////////////////////////////////////
 	//		Physijs.createMaterial					//
 	//////////////////////////////////////////////////////////////////////////
-	
-	Physijs.addxMaterialCtx	= function(material, friction, restitution){
+
+	Physijs.xMaterial	= function(material, friction, restitution){
 		console.assert(material instanceof THREE.Material)
 		console.assert(material.id)
-		console.assert(material._physijs === undefined)
-		material._physijs	= {
-			id		: material.id,
-			friction	: friction === undefined ? .8 : friction,
-			restitution	: restitution === undefined ? .2 : restitution
-		};
-	}	
-	
+
+		this.id		= material.id,
+		this.friction	= friction === undefined ? .8 : friction,
+		this.restitution= restitution === undefined ? .2 : restitution
+	};	
+		
 	// Physijs.createMaterial
 	Physijs.createMaterial = function( material, friction, restitution ) {
 		var physijs_material = function(){};
 		physijs_material.prototype = material;
 		physijs_material = new physijs_material;
 		
-		Physijs.addxMaterialCtx(physijs_material, friction, restitution)
+		console.assert(physijs_material._physijs === undefined)
+		physijs_material._physijs	= new Physijs.xMaterial(material, friction, restitution)
 		
 		return physijs_material;
 	};
@@ -459,11 +458,25 @@ window.Physijs = (function() {
 	//////////////////////////////////////////////////////////////////////////
 	//		Phsijs.Mesh						//
 	//////////////////////////////////////////////////////////////////////////
+
+	Physijs.xMesh	= function(geometry, mass){
+
+		if ( !geometry.boundingBox ) {
+			geometry.computeBoundingBox();
+		}
+		
+		this.type		= null;
+		this.id			= getObjectId();
+		this.mass		= mass || 0;
+		this.touches		= [];
+		this.linearVelocity	= new THREE.Vector3();
+		this.angularVelocity	= new THREE.Vector3();
+	}
 	
 	// Phsijs.Mesh
 	Physijs.Mesh = function ( geometry, material, mass ) {
 		var index;
-		
+		// jme- what is this ???
 		if ( !geometry ) {
 			return;
 		}
@@ -471,18 +484,8 @@ window.Physijs = (function() {
 		Eventable.call( this );
 		THREE.Mesh.call( this, geometry, material );
 		
-		if ( !geometry.boundingBox ) {
-			geometry.computeBoundingBox();
-		}
-		
-		this._physijs = {
-			type: null,
-			id: getObjectId(),
-			mass: mass || 0,
-			touches: [],
-			linearVelocity: new THREE.Vector3,
-			angularVelocity: new THREE.Vector3
-		};
+		console.assert(this._physijs === undefined)
+		this._physijs	= new Physijs.xMesh(geometry, mass)
 	};
 	Physijs.Mesh.prototype = new THREE.Mesh;
 	Physijs.Mesh.prototype.constructor = Physijs.Mesh;

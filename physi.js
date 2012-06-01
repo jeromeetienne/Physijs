@@ -1,5 +1,17 @@
 'use strict';
 
+// tQuery API
+//
+// world.enablePhysics();
+// world.physics()		// here access physijs.xScene
+// world.hasPhysics()
+// world.disablePhysics();
+//
+// object.enablePhysics()
+// object.physics()		// here access physijs.xMesh and physijs.xMaterial
+// object.hasPhysics()
+// object.disablePhysics()
+
 window.Physijs = (function() {
 	var THREE_REVISION = parseInt( THREE.REVISION, 10 ),
 		_matrix = new THREE.Matrix4, _is_simulating = false,
@@ -9,7 +21,7 @@ window.Physijs = (function() {
 		getObjectId, // returns a unique ID for a Physijs mesh object
 		getEulerXYZFromQuaternion, getQuatertionFromEuler,
 		addObjectChildren,
-		
+
 		_temp1, _temp2,
 		_temp_vector3_1 = new THREE.Vector3,
 		
@@ -130,76 +142,55 @@ window.Physijs = (function() {
 		console.assert(physijs_material._physijs === undefined)
 		physijs_material._xMaterial	= new Physijs.xMaterial(material, friction, restitution)
 		physijs_material._physijs	= physijs_material._xMaterial._physijs;
-		
+
 		return physijs_material;
 	};
 		
 
 	//////////////////////////////////////////////////////////////////////////
-	//		Physijs.Scene						//
+	//		Physijs.xScene						//
 	//////////////////////////////////////////////////////////////////////////
 	
 	Physijs.xScene	= function(params){
-	};
-	
-	// Physijs.Scene
-	Physijs.Scene = function( params ) {
-		var self = this;
-		
-		Eventable.call( this );
-		THREE.Scene.call( this );
-		
 		this._worker = new Worker( Physijs.scripts.worker || 'physijs_worker.js' );
 		this._materials = {};
 		this._objects = {};
-		
-		this._worker.onmessage = function ( event ) {
-			var _temp;
-			
-			if ( event.data instanceof Float32Array ) {
-				
-				// transferable object
-				switch ( event.data[0] ) {
-					case MESSAGE_TYPES.WORLDREPORT:
-						self._updateScene( event.data );
-						break;
-					
-					case MESSAGE_TYPES.COLLISIONREPORT:
-						self._updateCollisions( event.data );
-						break;
-				}
-				
-			} else {
-				
-				// non-transferable object
-				switch ( event.data.cmd ) {
-					case 'objectReady':
-						_temp = event.data.params;
-						if ( self._objects[ _temp ].readyCallback ) {
-							self._objects[ _temp ].readyCallback( self._objects[ _temp ] );
-						}
-						break;
-					
-					default:
-						// Do nothing, just show the message
-						console.debug('Received: ' + event.data.cmd);
-						console.dir(event.data.params);
-						break;
-				}
-				
-			}
-		};
-		
-		
-		params = params || {};
-		params.ammo = Physijs.scripts.ammo || 'ammo.js';
-		this.execute( 'init', params );
 	};
-	Physijs.Scene.prototype = new THREE.Scene;
-	Physijs.Scene.prototype.constructor = Physijs.Scene;
-	Eventable.make( Physijs.Scene );
+	Eventable.make( Physijs.xScene );
+	Physijs.xScene.prototype.execute	= function( cmd, params ) {
+		this._worker.postMessage({ cmd: cmd, params: params });
+	};
 	
-	Physijs.Scene.prototype._updateScene = function( data ) {
+	Physijs.xScene.prototype._onMessage	= function( event ) {
+		var _temp;
+		if ( event.data instanceof Float32Array ) {			
+			// transferable object
+			switch ( event.data[0] ) {
+				case MESSAGE_TYPES.WORLDREPORT:
+					this._updateScene( event.data );
+					break;	
+				case MESSAGE_TYPES.COLLISIONREPORT:
+					this._updateCollisions( event.data );
+					break;
+			}
+		} else {
+			// non-transferable object
+			switch ( event.data.cmd ) {
+				case 'objectReady':
+					_temp = event.data.params;
+					if ( this._objects[ _temp ].readyCallback ) {
+						this._objects[ _temp ].readyCallback( this._objects[ _temp ] );
+					}
+					break;	
+				default:
+					// Do nothing, just show the message
+					console.debug('Received: ' + event.data.cmd);
+					console.dir(event.data.params);
+					break;
+			}
+		}
+	};
+	Physijs.xScene.prototype._updateScene = function( data ) {
 		var num_objects = data[1],
 			object,
 			i, offset;
@@ -257,8 +248,7 @@ window.Physijs = (function() {
 		_is_simulating = false;
 		this.dispatchEvent( 'update' );
 	};
-	
-	Physijs.Scene.prototype._updateCollisions = function( data ) {
+	Physijs.xScene.prototype._updateCollisions = function( data ) {
 		/**
 		 * #TODO
 		 * This is probably the worst way ever to handle collisions. The inherent evilness is a residual
@@ -328,99 +318,7 @@ window.Physijs = (function() {
 			this._worker.webkitPostMessage( data, [data.buffer] );
 		}
 	};
-	
-	Physijs.Scene.prototype.execute = function( cmd, params ) {
-		this._worker.postMessage({ cmd: cmd, params: params });
-	};
-	
-	addObjectChildren = function( parent, object, offset ) {
-		var i;
-		
-		if ( parent !== object ) {
-			offset.x += object.position.x;
-			offset.y += object.position.y;
-			offset.z += object.position.z;
-		}
-		
-		for ( i = 0; i < object.children.length; i++ ) {
-			if ( object.children[i]._physijs ) {
-				object.children[i]._physijs.offset = {
-					x: object.children[i].position.x + offset.x,
-					y: object.children[i].position.y + offset.y,
-					z: object.children[i].position.z + offset.z
-				};
-				
-				if ( object.children[i].useQuaternion !== true ) {
-					object.children[i].quaternion.copy(getQuatertionFromEuler( object.children[i].rotation.x, object.children[i].rotation.y, object.children[i].rotation.z ));
-				}
-				object.children[i]._physijs.rotation = {
-					x: object.children[i].quaternion.x,
-					y: object.children[i].quaternion.y,
-					z: object.children[i].quaternion.z,
-					w: object.children[i].quaternion.w
-				};
-				
-				parent._physijs.children.push( object.children[i]._physijs );
-			}
-			
-			addObjectChildren( parent, object.children[i], offset.clone() );
-		}
-	};
-	
-	Physijs.Scene.prototype.add = function( object, callback ) {
-		THREE.Mesh.prototype.add.call( this, object );
-		
-		if ( object._physijs ) {
-			object.__dirtyPosition = false;
-			object.__dirtyRotation = false;
-			this._objects[object._physijs.id] = object;
-			
-			if ( object.children.length ) {
-				object._physijs.children = [];
-				addObjectChildren( object, object, new THREE.Vector3 );
-			}
-			
-			object.world 		= this;
-			object._xMesh.scene	= this;
-			
-			if ( callback !== undefined ) {
-				object.readyCallback = callback;
-			}
-			
-			if ( object.material._physijs ) {
-				if ( !this._materials.hasOwnProperty( object.material._physijs.id ) ) {
-					this.execute( 'registerMaterial', object.material._physijs );
-					object._physijs.materialId = object.material._physijs.id;
-				}
-			}
-			
-			// Object starting position + rotation		
-			object._physijs.position = { x: object.position.x, y: object.position.y, z: object.position.z };	
-			if (!object.useQuaternion) {
-				_matrix.identity().setRotationFromEuler( object.rotation );
-				object.quaternion.setFromRotationMatrix( _matrix );
-			};
-			object._physijs.rotation = { x: object.quaternion.x, y: object.quaternion.y, z: object.quaternion.z, w: object.quaternion.w };
-			
-			this.execute( 'addObject', object._physijs );
-		}
-	};
-	
-	Physijs.Scene.prototype.remove = function( object ) {
-		THREE.Mesh.prototype.remove.call( this, object );
-		
-		if ( object._physijs ) {
-			this.execute( 'removeObject', { id: object._physijs.id } );
-		}
-	};
-	
-	Physijs.Scene.prototype.setGravity = function( gravity ) {
-		if ( gravity ) {
-			this.execute( 'setGravity', gravity );
-		}
-	};
-	
-	Physijs.Scene.prototype.simulate = function( timeStep, maxSubSteps ) {
+	Physijs.xScene.prototype.simulate = function( timeStep, maxSubSteps ) {
 		var object_id, object, update;
 		
 		if ( _is_simulating ) {
@@ -459,7 +357,137 @@ window.Physijs = (function() {
 		
 		return true;
 	};
+	Physijs.xScene.prototype.remove = function( object ) {
+		if ( object._physijs ) {
+			this.execute( 'removeObject', { id: object._physijs.id } );
+		}
+	};
+	Physijs.xScene.prototype.setGravity = function( gravity ) {
+		if ( gravity ) {
+			this.execute( 'setGravity', gravity );
+		}
+	};
+
+	addObjectChildren = function( parent, object, offset ) {
+		var i;
+		
+		if ( parent !== object ) {
+			offset.x += object.position.x;
+			offset.y += object.position.y;
+			offset.z += object.position.z;
+		}
+		
+		for ( i = 0; i < object.children.length; i++ ) {
+			if ( object.children[i]._physijs ) {
+				object.children[i]._physijs.offset = {
+					x: object.children[i].position.x + offset.x,
+					y: object.children[i].position.y + offset.y,
+					z: object.children[i].position.z + offset.z
+				};
+				
+				if ( object.children[i].useQuaternion !== true ) {
+					object.children[i].quaternion.copy(getQuatertionFromEuler( object.children[i].rotation.x, object.children[i].rotation.y, object.children[i].rotation.z ));
+				}
+				object.children[i]._physijs.rotation = {
+					x: object.children[i].quaternion.x,
+					y: object.children[i].quaternion.y,
+					z: object.children[i].quaternion.z,
+					w: object.children[i].quaternion.w
+				};
+				
+				parent._physijs.children.push( object.children[i]._physijs );
+			}
+			
+			addObjectChildren( parent, object.children[i], offset.clone() );
+		}
+	};
 	
+	Physijs.xScene.prototype.add = function( object, callback ) {
+		if ( object._physijs ) {
+			object.__dirtyPosition = false;
+			object.__dirtyRotation = false;
+			this._objects[object._physijs.id] = object;
+			
+			if ( object.children.length ) {
+				object._physijs.children = [];
+				addObjectChildren( object, object, new THREE.Vector3 );
+			}
+			
+			object.world 		= this;
+			object._xMesh.scene	= this;
+			
+			if ( callback !== undefined ) {
+				object.readyCallback = callback;
+			}
+			
+			if ( object.material._physijs ) {
+				if ( !this._materials.hasOwnProperty( object.material._physijs.id ) ) {
+					this.execute( 'registerMaterial', object.material._physijs );
+					object._physijs.materialId = object.material._physijs.id;
+				}
+			}
+			
+			// Object starting position + rotation		
+			object._physijs.position = { x: object.position.x, y: object.position.y, z: object.position.z };	
+			if (!object.useQuaternion) {
+				_matrix.identity().setRotationFromEuler( object.rotation );
+				object.quaternion.setFromRotationMatrix( _matrix );
+			};
+			object._physijs.rotation = { x: object.quaternion.x, y: object.quaternion.y, z: object.quaternion.z, w: object.quaternion.w };
+			
+			this.execute( 'addObject', object._physijs );
+		}
+	};
+
+	//////////////////////////////////////////////////////////////////////////
+	//		Physijs.Scene						//
+	//////////////////////////////////////////////////////////////////////////
+	
+	// Physijs.Scene
+	Physijs.Scene = function( params ) {
+		var self = this;
+		
+		Eventable.call( this );
+		THREE.Scene.call( this );
+		
+		console.assert(this._xScene === undefined)
+		this._xScene	= new Physijs.xScene(params);
+		this._worker	= this._xScene._worker;
+		this._materials = this._xScene._materials;
+		this._objects	= this._xScene._objects;
+
+		this._worker.onmessage	= this._xScene._onMessage.bind(this);
+		this._updateScene	= this._xScene._updateScene.bind(this);
+		this._updateCollisions	= this._xScene._updateCollisions.bind(this);
+		this.execute		= this._xScene.execute.bind(this);
+		this.simulate		= this._xScene.simulate.bind(this);
+
+		params = params || {};
+		params.ammo = Physijs.scripts.ammo || 'ammo.js';
+		this._xScene.execute( 'init', params );
+	};
+	Physijs.Scene.prototype = new THREE.Scene;
+	Physijs.Scene.prototype.constructor = Physijs.Scene;
+	Eventable.make( Physijs.Scene );
+	
+	Physijs.Scene.prototype._updateScene		= null;
+	Physijs.Scene.prototype._updateCollisions	= null;
+	Physijs.Scene.prototype.simulate		= null;
+	
+	
+	Physijs.Scene.prototype.add = function( object, callback ) {
+		THREE.Mesh.prototype.add.call( this, object );		
+		this._xScene.add(object, callback);
+	};
+	
+	Physijs.Scene.prototype.remove = function( object ) {
+		THREE.Mesh.prototype.remove.call( this, object );		
+		this._xScene.remove(object);
+	};
+	
+	Physijs.Scene.prototype.setGravity = function( gravity ) {
+		this._xScene.setGravity(gravity);
+	};
 	
 
 	//////////////////////////////////////////////////////////////////////////

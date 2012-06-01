@@ -114,9 +114,11 @@ window.Physijs = (function() {
 		console.assert(material instanceof THREE.Material)
 		console.assert(material.id)
 
-		this.id		= material.id,
-		this.friction	= friction === undefined ? .8 : friction,
-		this.restitution= restitution === undefined ? .2 : restitution
+		this._physijs = {
+			id: material.id,
+			friction: friction === undefined ? .8 : friction,
+			restitution: restitution === undefined ? .2 : restitution
+		};
 	};	
 		
 	// Physijs.createMaterial
@@ -126,7 +128,8 @@ window.Physijs = (function() {
 		physijs_material = new physijs_material;
 		
 		console.assert(physijs_material._physijs === undefined)
-		physijs_material._physijs	= new Physijs.xMaterial(material, friction, restitution)
+		physijs_material._xMaterial	= new Physijs.xMaterial(material, friction, restitution)
+		physijs_material._physijs	= physijs_material._xMaterial._physijs;
 		
 		return physijs_material;
 	};
@@ -135,6 +138,9 @@ window.Physijs = (function() {
 	//////////////////////////////////////////////////////////////////////////
 	//		Physijs.Scene						//
 	//////////////////////////////////////////////////////////////////////////
+	
+	Physijs.xScene	= function(params){
+	};
 	
 	// Physijs.Scene
 	Physijs.Scene = function( params ) {
@@ -374,7 +380,8 @@ window.Physijs = (function() {
 				addObjectChildren( object, object, new THREE.Vector3 );
 			}
 			
-			object.world = this;
+			object.world 		= this;
+			object._xMesh.scene	= this;
 			
 			if ( callback !== undefined ) {
 				object.readyCallback = callback;
@@ -465,13 +472,19 @@ window.Physijs = (function() {
 			geometry.computeBoundingBox();
 		}
 		
-		this.type		= null;
-		this.id			= getObjectId();
-		this.mass		= mass || 0;
-		this.touches		= [];
-		this.linearVelocity	= new THREE.Vector3();
-		this.angularVelocity	= new THREE.Vector3();
+		this._physijs = {
+			type: null,
+			id: getObjectId(),
+			mass: mass || 0,
+			touches: [],
+			linearVelocity: new THREE.Vector3,
+			angularVelocity: new THREE.Vector3
+		};
 	}
+	Physijs.xMesh.prototype.execute	= function( cmd, params ) {
+		if( !this._scene )	return;
+		this._scene.postMessage({ cmd: cmd, params: params });
+	};
 	
 	// Phsijs.Mesh
 	Physijs.Mesh = function ( geometry, material, mass ) {
@@ -484,8 +497,11 @@ window.Physijs = (function() {
 		Eventable.call( this );
 		THREE.Mesh.call( this, geometry, material );
 		
+		console.assert(this._xMesh === undefined)
 		console.assert(this._physijs === undefined)
-		this._physijs	= new Physijs.xMesh(geometry, mass)
+		this._xMesh	= new Physijs.xMesh(geometry, mass)
+		// TODO later remove this one and port all access
+		this._physijs	= this._xMesh._physijs;
 	};
 	Physijs.Mesh.prototype = new THREE.Mesh;
 	Physijs.Mesh.prototype.constructor = Physijs.Mesh;
@@ -497,37 +513,27 @@ window.Physijs = (function() {
 	});
 	Physijs.Mesh.prototype.__defineSetter__('mass', function( mass ) {
 		this._physijs.mass = mass;
-		if ( this.world ) {
-			this.world.execute( 'updateMass', { id: this._physijs.id, mass: mass } );
-		}
+		this._xMesh.execute( 'updateMass', { id: this._physijs.id, mass: mass } );
 	});
 	
 	// Physijs.Mesh.applyCentralImpulse
 	Physijs.Mesh.prototype.applyCentralImpulse = function ( force ) {
-		if ( this.world ) {
-			this.world.execute( 'applyCentralImpulse', { id: this._physijs.id, x: force.x, y: force.y, z: force.z } );
-		}
+		this._xMesh.execute( 'applyCentralImpulse', { id: this._physijs.id, x: force.x, y: force.y, z: force.z } );
 	};
 	
 	// Physijs.Mesh.applyImpulse
 	Physijs.Mesh.prototype.applyImpulse = function ( force, offset ) {
-		if ( this.world ) {
-			this.world.execute( 'applyImpulse', { id: this._physijs.id, impulse_x: force.x, impulse_y: force.y, impulse_z: force.z, x: offset.x, y: offset.y, z: offset.z } );
-		}
+		this._xMesh.execute( 'applyImpulse', { id: this._physijs.id, impulse_x: force.x, impulse_y: force.y, impulse_z: force.z, x: offset.x, y: offset.y, z: offset.z } );
 	};
 	
 	// Physijs.Mesh.applyCentralForce
 	Physijs.Mesh.prototype.applyCentralForce = function ( force ) {
-		if ( this.world ) {
-			this.world.execute( 'applyCentralForce', { id: this._physijs.id, x: force.x, y: force.y, z: force.z } );
-		}
+		this._xMesh.execute( 'applyCentralForce', { id: this._physijs.id, x: force.x, y: force.y, z: force.z } );
 	};
 	
 	// Physijs.Mesh.applyForce
 	Physijs.Mesh.prototype.applyForce = function ( force, offset ) {
-		if ( this.world ) {
-			this.world.execute( 'applyForce', { id: this._physijs.id, impulse_x: force.x, impulse_y: force.y, impulse_z: force.z, x: offset.x, y: offset.y, z: offset.z } );
-		}
+		this._xMesh.execute( 'applyForce', { id: this._physijs.id, impulse_x: force.x, impulse_y: force.y, impulse_z: force.z, x: offset.x, y: offset.y, z: offset.z } );
 	};
 	
 	// Physijs.Mesh.getAngularVelocity
@@ -537,9 +543,7 @@ window.Physijs = (function() {
 	
 	// Physijs.Mesh.setAngularVelocity
 	Physijs.Mesh.prototype.setAngularVelocity = function ( velocity ) {
-		if ( this.world ) {
-			this.world.execute( 'setAngularVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
-		}
+		this._xMesh.execute( 'setAngularVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
 	};
 	
 	// Physijs.Mesh.getLinearVelocity
@@ -549,55 +553,45 @@ window.Physijs = (function() {
 	
 	// Physijs.Mesh.setLinearVelocity
 	Physijs.Mesh.prototype.setLinearVelocity = function ( velocity ) {
-		if ( this.world ) {
-			this.world.execute( 'setLinearVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
-		}
+		this._xMesh.execute( 'setLinearVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
 	};
 	
 	// Physijs.Mesh.setAngularFactor
 	Physijs.Mesh.prototype.setAngularFactor = function ( factor ) {
-		if ( this.world ) {
-			this.world.execute( 'setAngularFactor', { id: this._physijs.id, x: factor.x, y: factor.y, z: factor.z } );
-		}
+		this._xMesh.execute( 'setAngularFactor', { id: this._physijs.id, x: factor.x, y: factor.y, z: factor.z } );
 	};
 	
 	// Physijs.Mesh.setLinearFactor
 	Physijs.Mesh.prototype.setLinearFactor = function ( factor ) {
-		if ( this.world ) {
-			this.world.execute( 'setLinearFactor', { id: this._physijs.id, x: factor.x, y: factor.y, z: factor.z } );
-		}
+		this._xMesh.execute( 'setLinearFactor', { id: this._physijs.id, x: factor.x, y: factor.y, z: factor.z } );
 	};
 	
 	// Physijs.Mesh.setCcdMotionThreshold
 	Physijs.Mesh.prototype.setCcdMotionThreshold = function ( threshold ) {
-		if ( this.world ) {
-			this.world.execute( 'setCcdMotionThreshold', { id: this._physijs.id, threshold: threshold } );
-		}
+		this._xMesh.execute( 'setCcdMotionThreshold', { id: this._physijs.id, threshold: threshold } );
 	};
 	
 	// Physijs.Mesh.setCcdSweptSphereRadius
 	Physijs.Mesh.prototype.setCcdSweptSphereRadius = function ( radius ) {
-		if ( this.world ) {
-			this.world.execute( 'setCcdSweptSphereRadius', { id: this._physijs.id, radius: radius } );
-		}
+		this._xMesh.execute( 'setCcdSweptSphereRadius', { id: this._physijs.id, radius: radius } );
 	};
 	
 	
 	// Physijs.PlaneMesh
 	Physijs.PlaneMesh = function ( geometry, material, mass ) {
 		var width, height;
-		
+
 		Physijs.Mesh.call( this, geometry, material, mass );
-		
+
 		if ( !geometry.boundingBox ) {
 			geometry.computeBoundingBox();
 		}
-		
+
 		width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
 		height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
-		
+
 		this._physijs.type = 'plane';
-		
+
 		this._physijs.normal = {
 			x: this._physijs.normal.x,
 			y: this._physijs.normal.y,

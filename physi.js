@@ -155,6 +155,12 @@ window.Physijs = (function() {
 		this._worker = new Worker( Physijs.scripts.worker || 'physijs_worker.js' );
 		this._materials = {};
 		this._objects = {};
+		
+		this._worker.onmessage	= this._onMessage.bind(this);
+
+		params = params || {};
+		params.ammo = Physijs.scripts.ammo || 'ammo.js';
+		this.execute( 'init', params );
 	};
 	Eventable.make( Physijs.xScene );
 	Physijs.xScene.prototype.execute	= function( cmd, params ) {
@@ -162,6 +168,7 @@ window.Physijs = (function() {
 	};
 	
 	Physijs.xScene.prototype._onMessage	= function( event ) {
+		console.assert( this instanceof Physijs.Scene )
 		var _temp;
 		if ( event.data instanceof Float32Array ) {			
 			// transferable object
@@ -461,10 +468,6 @@ window.Physijs = (function() {
 		this._updateCollisions	= this._xScene._updateCollisions.bind(this);
 		this.execute		= this._xScene.execute.bind(this);
 		this.simulate		= this._xScene.simulate.bind(this);
-
-		params = params || {};
-		params.ammo = Physijs.scripts.ammo || 'ammo.js';
-		this._xScene.execute( 'init', params );
 	};
 	Physijs.Scene.prototype = new THREE.Scene;
 	Physijs.Scene.prototype.constructor = Physijs.Scene;

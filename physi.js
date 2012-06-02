@@ -572,6 +572,7 @@ window.Physijs = (function() {
 		this._physijs.type = 'sphere';
 		this._physijs.radius = geometry.boundingSphere.radius;
 		this._physijs.mass = (typeof mass === 'undefined') ? (4/3) * Math.PI * Math.pow(this._physijs.radius, 3) : mass;
+	console.log("sphere", this._physijs)
 	}
 	
 

@@ -42,6 +42,7 @@ tQuery.Mesh.register('enablePhysics', function(mass){
 	if( tGeometry instanceof THREE.CubeGeometry ){
 		tMesh._xMesh._boxGeometryInit(tGeometry, mass)
 	}else if( tGeometry instanceof THREE.SphereGeometry ){
+		tGeometry.computeBoundingSphere();
 		tMesh._xMesh._sphereGeometryInit(tGeometry, mass)
 	}else{
 		console.assert(false, "unknown geometry type");	

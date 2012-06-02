@@ -1,0 +1,41 @@
+<!doctype html><title>Minimal tQuery Page</title>
+<script src="./tquery-bundle.js"></script>
+<script src="../../physi.js"></script>
+<script src="./tquery.physijs.js"></script>
+<body><script>
+	var world	= tQuery.createWorld().boilerplate().start();
+	world.tCamera().translateZ(-100);
+
+	Physijs.scripts.worker	= '../../physijs_worker.js';
+	Physijs.scripts.ammo	= 'examples/js/ammo.js';
+
+	world.enablePhysics();
+
+	var tMaterial	= new THREE.MeshNormalMaterial()
+
+	console.assert(tMaterial._physijs === undefined)
+	//tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, friction, restitution)
+	tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, .8, .5);
+	tMaterial._physijs	= tMaterial._xMaterial._physijs;
+
+
+	setInterval(function(){
+		var object	= tQuery.createCube(tMaterial)
+				.geometry().scaleBy(4, 4, 4).back()
+				.translateY(+15)
+				.addTo(world);
+		object
+			.rotation(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2)
+			.position(Math.random()*2-1, 15, Math.random()*2-1)
+			.enablePhysics()
+	}, 1000);
+
+
+	var object	= tQuery.createCube(tMaterial)
+			.geometry().scaleBy(100, 1, 100).back()
+			.translateY(-10)
+			.addTo(world);
+
+	object.enablePhysics(0);
+
+</script></body>

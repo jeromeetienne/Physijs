@@ -1,17 +1,5 @@
 'use strict';
 
-// tQuery API
-//
-// world.enablePhysics();
-// world.physics()		// here access physijs.xScene
-// world.hasPhysics()
-// world.disablePhysics();
-//
-// object.enablePhysics()
-// object.physics()		// here access physijs.xMesh and physijs.xMaterial
-// object.hasPhysics()
-// object.disablePhysics()
-
 window.Physijs = (function() {
 	var THREE_REVISION = parseInt( THREE.REVISION, 10 ),
 		_matrix = new THREE.Matrix4, _is_simulating = false,
@@ -283,6 +271,7 @@ window.Physijs = (function() {
 		for ( object in this._objects ) {
 			if ( !this._objects.hasOwnProperty( object ) ) return;
 			object = this._objects[ object ];
+			if( object instanceof Physijs.Mesh === false )	object	= object._xMesh;
 			
 			if ( collisions[ object._physijs.id ] ) {
 				
@@ -291,15 +280,16 @@ window.Physijs = (function() {
 				
 				for ( j = 0; j < collisions[ object._physijs.id ].length; j++ ) {
 					object2 = this._objects[ collisions[ object._physijs.id ][j] ];
+					if( object2 instanceof Physijs.Mesh === false )	object2	= object2._xMesh;
 					
 					if ( object._physijs.touches.indexOf( object2._physijs.id ) === -1 ) {
 						object._physijs.touches.push( object2._physijs.id );
-						
+
 						_temp_vector3_1.sub( object.getLinearVelocity(), object2.getLinearVelocity() );
 						_temp1 = _temp_vector3_1.length();
 						
 						_temp_vector3_1.sub( object.getAngularVelocity(), object2.getAngularVelocity() );
-						_temp2 = _temp_vector3_1.length();
+						_temp2 = _temp_vector3_1.length();							
 						
 						object.dispatchEvent( 'collision', object2, _temp1, _temp2 );
 						object2.dispatchEvent( 'collision', object, _temp1, _temp2 );
@@ -501,6 +491,8 @@ window.Physijs = (function() {
 
 	Physijs.xMesh	= function(geometry, mass){
 
+		Eventable.call( this );
+
 		if ( !geometry.boundingBox ) {
 			geometry.computeBoundingBox();
 		}
@@ -514,10 +506,21 @@ window.Physijs = (function() {
 			angularVelocity: new THREE.Vector3
 		};
 	}
+	Eventable.make( Physijs.xMesh );
+
 	Physijs.xMesh.prototype.execute	= function( cmd, params ) {
 		if( !this._scene )	return;
 		this._scene.postMessage({ cmd: cmd, params: params });
 	};
+	// Physijs.Mesh.mass
+	Physijs.xMesh.prototype.__defineGetter__('mass', function() {
+		return this._physijs.mass;
+	});
+	Physijs.xMesh.prototype.__defineSetter__('mass', function( mass ) {
+		console.log("setMass", mass, this._physijs.mass)
+		this._physijs.mass = mass;
+		this.execute( 'updateMass', { id: this._physijs.id, mass: mass } );
+	});
 
 	Physijs.xMesh.prototype._boxGeometryInit	= function(geometry, mass){
 		console.assert(geometry instanceof THREE.CubeGeometry);
@@ -537,6 +540,30 @@ window.Physijs = (function() {
 		this._physijs.depth = depth;
 		this._physijs.mass = (typeof mass === 'undefined') ? width * height * depth : mass;
 	}
+	
+	// Physijs.Mesh.getAngularVelocity
+	Physijs.xMesh.prototype.getAngularVelocity = function () {
+		return this._physijs.angularVelocity;
+	};
+	
+	// Physijs.Mesh.setAngularVelocity
+	Physijs.xMesh.prototype.setAngularVelocity = function ( velocity ) {
+		this.execute( 'setAngularVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
+	};
+	
+	// Physijs.Mesh.getLinearVelocity
+	Physijs.xMesh.prototype.getLinearVelocity = function () {
+		return this._physijs.linearVelocity;
+	};
+	
+	// Physijs.Mesh.setLinearVelocity
+	Physijs.xMesh.prototype.setLinearVelocity = function ( velocity ) {
+		this.execute( 'setLinearVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
+	};
+
+	//////////////////////////////////////////////////////////////////////////
+	//									//
+	//////////////////////////////////////////////////////////////////////////
 	
 	// Phsijs.Mesh
 	Physijs.Mesh = function ( geometry, material, mass ) {
@@ -561,11 +588,10 @@ window.Physijs = (function() {
 	
 	// Physijs.Mesh.mass
 	Physijs.Mesh.prototype.__defineGetter__('mass', function() {
-		return this._physijs.mass;
+		return this._xMesh.mass;
 	});
 	Physijs.Mesh.prototype.__defineSetter__('mass', function( mass ) {
-		this._physijs.mass = mass;
-		this._xMesh.execute( 'updateMass', { id: this._physijs.id, mass: mass } );
+		this._xMesh.mass = mass;
 	});
 	
 	// Physijs.Mesh.applyCentralImpulse
@@ -628,6 +654,9 @@ window.Physijs = (function() {
 		this._xMesh.execute( 'setCcdSweptSphereRadius', { id: this._physijs.id, radius: radius } );
 	};
 	
+	//////////////////////////////////////////////////////////////////////////
+	//									//
+	//////////////////////////////////////////////////////////////////////////
 	
 	// Physijs.PlaneMesh
 	Physijs.PlaneMesh = function ( geometry, material, mass ) {

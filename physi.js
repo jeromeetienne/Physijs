@@ -152,6 +152,8 @@ window.Physijs = (function() {
 	//////////////////////////////////////////////////////////////////////////
 	
 	Physijs.xScene	= function(params){
+		Eventable.call( this );
+
 		this._worker = new Worker( Physijs.scripts.worker || 'physijs_worker.js' );
 		this._materials = {};
 		this._objects = {};
@@ -168,7 +170,7 @@ window.Physijs = (function() {
 	};
 	
 	Physijs.xScene.prototype._onMessage	= function( event ) {
-		console.assert( this instanceof Physijs.Scene )
+		//console.assert( this instanceof Physijs.Scene )
 		var _temp;
 		if ( event.data instanceof Float32Array ) {			
 			// transferable object
@@ -516,6 +518,25 @@ window.Physijs = (function() {
 		if( !this._scene )	return;
 		this._scene.postMessage({ cmd: cmd, params: params });
 	};
+
+	Physijs.xMesh.prototype._boxGeometryInit	= function(geometry, mass){
+		console.assert(geometry instanceof THREE.CubeGeometry);
+		console.log("geometry", geometry)
+		
+		if ( !geometry.boundingBox ) {
+			geometry.computeBoundingBox();
+		}
+		
+		var width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
+		var height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+		var depth = geometry.boundingBox.max.z - geometry.boundingBox.min.z;
+		
+		this._physijs.type = 'box';
+		this._physijs.width = width;
+		this._physijs.height = height;
+		this._physijs.depth = depth;
+		this._physijs.mass = (typeof mass === 'undefined') ? width * height * depth : mass;
+	}
 	
 	// Phsijs.Mesh
 	Physijs.Mesh = function ( geometry, material, mass ) {
@@ -641,19 +662,7 @@ window.Physijs = (function() {
 		
 		Physijs.Mesh.call( this, geometry, material, mass );
 		
-		if ( !geometry.boundingBox ) {
-			geometry.computeBoundingBox();
-		}
-		
-		width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
-		height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
-		depth = geometry.boundingBox.max.z - geometry.boundingBox.min.z;
-		
-		this._physijs.type = 'box';
-		this._physijs.width = width;
-		this._physijs.height = height;
-		this._physijs.depth = depth;
-		this._physijs.mass = (typeof mass === 'undefined') ? width * height * depth : mass;
+		this._xMesh._boxGeometryInit(geometry, mass);
 	};
 	Physijs.BoxMesh.prototype = new Physijs.Mesh;
 	Physijs.BoxMesh.prototype.constructor = Physijs.BoxMesh;

@@ -11,33 +11,47 @@
 
 	world.enablePhysics();
 
-	var tMaterial	= new THREE.MeshBasicMaterial({
-		map	: THREE.ImageUtils.loadTexture( "./water.jpg" ),
-	})
+	var texture	= THREE.ImageUtils.loadTexture( "./water.jpg" );
 
-	console.assert(tMaterial._physijs === undefined)
-	//tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, friction, restitution)
-	tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, .8, .5);
-	tMaterial._physijs	= tMaterial._xMaterial._physijs;
 
 
 	setInterval(function(){
-		var object	= tQuery.createSphere(tMaterial)
+		return;
+		var tMaterial	= new THREE.MeshBasicMaterial({
+			color	: Math.random()*0xffffff,
+			map	: texture,
+		})
+		console.assert(tMaterial._physijs === undefined)
+		tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, .5, 1);
+		tMaterial._physijs	= tMaterial._xMaterial._physijs;
+
+		var object	= tQuery.createCube(tMaterial)
 				.geometry().scaleBy(4, 4, 4).back()
-				.translateY(+15)
 				.addTo(world);
 		object
 			.rotation(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2)
 			.position(Math.random()*2-1, 15, Math.random()*2-1)
 			.enablePhysics()
-	}, 1000);
+	}, 100);
 
+
+	var tMaterial	= new THREE.MeshBasicMaterial({
+		map	: texture
+	})
+
+	console.assert(tMaterial._physijs === undefined)
+	//tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, friction, restitution)
+	tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, .5, 1);
+	tMaterial._physijs	= tMaterial._xMaterial._physijs;
+
+	var object	= tQuery.createPlane().addTo(world)
+			.geometry().scaleBy(100, 1, 100).rotateZ(Math.PI/2).translateX(40).back()
+			.enablePhysics(0);
 
 	var object	= tQuery.createCube(tMaterial)
 			.geometry().scaleBy(100, 1, 100).back()
 			.translateY(-10)
 			.addTo(world);
-
 	object.enablePhysics(0);
 
 </script></body>

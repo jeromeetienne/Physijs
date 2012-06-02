@@ -105,36 +105,6 @@ window.Physijs = (function() {
 		window.Physijs = _Physijs;
 		return Physijs;
 	};
-
-	//////////////////////////////////////////////////////////////////////////
-	//		Physijs.createMaterial					//
-	//////////////////////////////////////////////////////////////////////////
-
-	Physijs.xMaterial	= function(material, friction, restitution){
-		console.assert(material instanceof THREE.Material)
-		console.assert(material.id)
-
-		this._physijs = {
-			id: material.id,
-			friction: friction === undefined ? .8 : friction,
-			restitution: restitution === undefined ? .2 : restitution
-		};
-	};	
-		
-	// Physijs.createMaterial
-	Physijs.createMaterial = function( material, friction, restitution ) {
-		var physijs_material = function(){};
-		physijs_material.prototype = material;
-		physijs_material = new physijs_material;
-		
-		console.assert(physijs_material._physijs === undefined)
-		physijs_material._xMaterial	= new Physijs.xMaterial(material, friction, restitution)
-		physijs_material._physijs	= physijs_material._xMaterial._physijs;
-
-		return physijs_material;
-	};
-		
-
 	//////////////////////////////////////////////////////////////////////////
 	//		Physijs.xScene						//
 	//////////////////////////////////////////////////////////////////////////
@@ -485,6 +455,36 @@ window.Physijs = (function() {
 	};
 	
 
+
+	//////////////////////////////////////////////////////////////////////////
+	//		Physijs.createMaterial					//
+	//////////////////////////////////////////////////////////////////////////
+
+	Physijs.xMaterial	= function(material, friction, restitution){
+		console.assert(material instanceof THREE.Material)
+		console.assert(material.id)
+
+		this._physijs = {
+			id: material.id,
+			friction: friction === undefined ? .8 : friction,
+			restitution: restitution === undefined ? .2 : restitution
+		};
+	};	
+		
+	// Physijs.createMaterial
+	Physijs.createMaterial = function( material, friction, restitution ) {
+		var physijs_material = function(){};
+		physijs_material.prototype = material;
+		physijs_material = new physijs_material;
+		
+		console.assert(physijs_material._physijs === undefined)
+		physijs_material._xMaterial	= new Physijs.xMaterial(material, friction, restitution)
+		physijs_material._physijs	= physijs_material._xMaterial._physijs;
+
+		return physijs_material;
+	};
+		
+
 	//////////////////////////////////////////////////////////////////////////
 	//		Phsijs.Mesh						//
 	//////////////////////////////////////////////////////////////////////////
@@ -572,8 +572,25 @@ window.Physijs = (function() {
 		this._physijs.type = 'sphere';
 		this._physijs.radius = geometry.boundingSphere.radius;
 		this._physijs.mass = (typeof mass === 'undefined') ? (4/3) * Math.PI * Math.pow(this._physijs.radius, 3) : mass;
-	}
-	
+	};
+
+
+	Physijs.xMesh.prototype._planeGeometryInit	= function(geometry, mass){
+		if ( !geometry.boundingBox ) {
+			geometry.computeBoundingBox();
+		}
+
+		var width	= geometry.boundingBox.max.x - geometry.boundingBox.min.x;
+		var height	= geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+
+		this._physijs.type = 'plane';
+		this._physijs.normal = {
+			x	: this._physijs.normal.x,
+			y	: this._physijs.normal.y,
+			z	: this._physijs.normal.z
+		};		
+		this._physijs.mass = (typeof mass === 'undefined') ? width * height : mass;
+	};	
 
 	//////////////////////////////////////////////////////////////////////////
 	//									//
@@ -678,22 +695,7 @@ window.Physijs = (function() {
 
 		Physijs.Mesh.call( this, geometry, material, mass );
 
-		if ( !geometry.boundingBox ) {
-			geometry.computeBoundingBox();
-		}
-
-		width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
-		height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
-
-		this._physijs.type = 'plane';
-
-		this._physijs.normal = {
-			x: this._physijs.normal.x,
-			y: this._physijs.normal.y,
-			z: this._physijs.normal.z
-		};
-		
-		this._physijs.mass = (typeof mass === 'undefined') ? width * height : mass;
+		this._xMesh._planeGeometryInit(geometry, mass);
 	};
 	Physijs.PlaneMesh.prototype = new Physijs.Mesh;
 	Physijs.PlaneMesh.prototype.constructor = Physijs.PlaneMesh;

@@ -522,25 +522,6 @@ window.Physijs = (function() {
 		this.execute( 'updateMass', { id: this._physijs.id, mass: mass } );
 	});
 
-	Physijs.xMesh.prototype._boxGeometryInit	= function(geometry, mass){
-		console.assert(geometry instanceof THREE.CubeGeometry);
-		console.log("geometry", geometry)
-		
-		if ( !geometry.boundingBox ) {
-			geometry.computeBoundingBox();
-		}
-		
-		var width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
-		var height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
-		var depth = geometry.boundingBox.max.z - geometry.boundingBox.min.z;
-		
-		this._physijs.type = 'box';
-		this._physijs.width = width;
-		this._physijs.height = height;
-		this._physijs.depth = depth;
-		this._physijs.mass = (typeof mass === 'undefined') ? width * height * depth : mass;
-	}
-	
 	// Physijs.Mesh.getAngularVelocity
 	Physijs.xMesh.prototype.getAngularVelocity = function () {
 		return this._physijs.angularVelocity;
@@ -560,6 +541,39 @@ window.Physijs = (function() {
 	Physijs.xMesh.prototype.setLinearVelocity = function ( velocity ) {
 		this.execute( 'setLinearVelocity', { id: this._physijs.id, x: velocity.x, y: velocity.y, z: velocity.z } );
 	};
+
+	Physijs.xMesh.prototype._boxGeometryInit	= function(geometry, mass){
+		console.assert(geometry instanceof THREE.CubeGeometry);
+		//console.log("geometry", geometry)
+		
+		if ( !geometry.boundingBox ) {
+			geometry.computeBoundingBox();
+		}
+		
+		var width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
+		var height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+		var depth = geometry.boundingBox.max.z - geometry.boundingBox.min.z;
+		
+		this._physijs.type = 'box';
+		this._physijs.width = width;
+		this._physijs.height = height;
+		this._physijs.depth = depth;
+		this._physijs.mass = (typeof mass === 'undefined') ? width * height * depth : mass;
+	}
+	
+	Physijs.xMesh.prototype._sphereGeometryInit	= function(geometry, mass){
+		console.assert(geometry instanceof THREE.SphereGeometry);
+		//console.log("geometry", geometry)
+		
+		if ( !geometry.boundingSphere ) {
+			geometry.computeBoundingSphere();
+		}
+		
+		this._physijs.type = 'sphere';
+		this._physijs.radius = geometry.boundingSphere.radius;
+		this._physijs.mass = (typeof mass === 'undefined') ? (4/3) * Math.PI * Math.pow(this._physijs.radius, 3) : mass;
+	}
+	
 
 	//////////////////////////////////////////////////////////////////////////
 	//									//
@@ -700,14 +714,8 @@ window.Physijs = (function() {
 	// Physijs.SphereMesh
 	Physijs.SphereMesh = function( geometry, material, mass ) {
 		Physijs.Mesh.call( this, geometry, material, mass );
-		
-		if ( !geometry.boundingSphere ) {
-			geometry.computeBoundingSphere();
-		}
-		
-		this._physijs.type = 'sphere';
-		this._physijs.radius = geometry.boundingSphere.radius;
-		this._physijs.mass = (typeof mass === 'undefined') ? (4/3) * Math.PI * Math.pow(this._physijs.radius, 3) : mass;
+
+		this.xMesh._sphereGeometryInit(geometry, mass);	
 	};
 	Physijs.SphereMesh.prototype = new Physijs.Mesh;
 	Physijs.SphereMesh.prototype.constructor = Physijs.SphereMesh;

@@ -11,7 +11,9 @@
 
 	world.enablePhysics();
 
-	var tMaterial	= new THREE.MeshNormalMaterial()
+	var tMaterial	= new THREE.MeshBasicMaterial({
+		map	: THREE.ImageUtils.loadTexture( "./water.jpg" ),
+	})
 
 	console.assert(tMaterial._physijs === undefined)
 	//tMaterial._xMaterial	= new Physijs.xMaterial(tMaterial, friction, restitution)
@@ -20,7 +22,7 @@
 
 
 	setInterval(function(){
-		var object	= tQuery.createCube(tMaterial)
+		var object	= tQuery.createSphere(tMaterial)
 				.geometry().scaleBy(4, 4, 4).back()
 				.translateY(+15)
 				.addTo(world);
